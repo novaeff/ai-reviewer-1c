@@ -1,10 +1,19 @@
-from rules import *;
-from utils import *;
-from entities import *;
+import re
+from .rules import *
+from .utils import *
+from .elements import *
+
+QUERY_VAR_RE = re.compile(r"\b(\w+)\s*=\s*Новый\s+Запрос\b", re.IGNORECASE)
+EXEC_VAR_RE = re.compile(r"\b(\w+)\s*\.\s*Выполнить(?:Пакет)?\s*\(", re.IGNORECASE)
+
 
 def analyze_method(method, name_re, index):
+    raw_lines = method.body.split("\n")
     masked = mask_code(method.body)
     server_flag = is_server(method.directive)
+
+    # Собираем имена переменных, которым в методе присвоен Новый Запрос
+    query_vars = {m.group(1).lower() for m in QUERY_VAR_RE.finditer(masked)}
 
     hints = []
     already_added = set()
@@ -21,7 +30,6 @@ def analyze_method(method, name_re, index):
             facts[key] = []
         if (name, line) not in facts[key]:
             facts[key].append((name, line))
-        facts[key].append((name, line))
 
     loop_depth = 0
     tx_depth = 0
@@ -32,25 +40,36 @@ def analyze_method(method, name_re, index):
 
     for i, line in enumerate(masked.split("\n")):
         curr_line = method.start_line + i
+        raw_line = raw_lines[i] if i < len(raw_lines) else line
 
         # Проверка правил из списка RULES
         for rule in RULES:
-            match = rule["pattern"].search(line)
+            # Текст запроса замаскирован в line, поэтому физические регистры ищем в raw_line
+            target_line = raw_line if rule["fact"] == "reg_phys" else line
+            match = rule["pattern"].search(target_line)
             if not match:
                 continue
+
+            # Отсекаем .Выполнить() у фоновых заданий, HTTP-запросов и прочих объектов
+            if rule["fact"] == "query_exec":
+                var_match = EXEC_VAR_RE.search(line)
+                if not var_match or var_match.group(1).lower() not in query_vars:
+                    continue
+
             name = match.group(0).strip(" (.")
             if rule["fact"]:
                 add_fact(rule["fact"], name, curr_line)
 
-            active = False
             if rule["when"] == "loop":
                 active = loop_depth > 0
             elif rule["when"] == "tx":
                 active = tx_depth > 0
+            elif rule["when"] == "any":
+                active = True
             else:
                 active = server_flag
 
-            if active == True:
+            if active:
                 add_hint(rule["code"], curr_line, rule["msg"])
 
         # Поиск вызовов других методов этого же модуля

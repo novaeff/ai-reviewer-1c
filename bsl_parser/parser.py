@@ -1,7 +1,7 @@
-from rules import *;
-from entities import *;
-from utils import *;
-from analyzer import *;
+from .rules import *
+from .entities import *
+from .utils import *
+from .analyzer import *
 
 def parse_module_text(text):
     lines = split_lines(text.lstrip("\ufeff"))

@@ -1,5 +1,5 @@
-from rules import *;
-from entities import Param
+from .rules import *
+from .elements import Param
 
 def methods_in_ranges(methods, ranges):
     res = []
@@ -117,13 +117,3 @@ def is_client(directive):
 
 def is_server(directive):
     return directive.lower().startswith("&насервере")
-
-
-def get_context_name(directive):
-    if directive.lower().startswith("&наклиентенасервере"):
-        return "клиент и сервер"
-    if is_server(directive):
-        return "сервер"
-    if is_client(directive):
-        return "клиент"
-    return "контекст неизвестен"

@@ -1,25 +1,4 @@
-from utils import get_context_name
-
-class Param:
-    def __init__(self, name, by_val=False, default=""):
-        self.name = name
-        self.by_val = by_val
-        self.default = default
-
-
-class Call:
-    def __init__(self, name, line, in_loop):
-        self.name = name
-        self.line = line
-        self.in_loop = in_loop
-
-
-class Hint:
-    def __init__(self, code, line, message):
-        self.code = code
-        self.line = line
-        self.message = message
-
+from .utils import *
 
 class BSLMethod:
     def __init__(
@@ -88,46 +67,20 @@ class BSLMethod:
         lines = []
         for h in self.hints:
             lines.append(f"- строка {h.line}: {h.message}")
-        return "Предварительные находки статического анализа:\n" + "\n".join(lines)
+        return "Предупреждения статического анализа:\n" + "\n".join(lines)
+
+    def get_context_name(self, directive):
+        if directive.lower().startswith("&наклиентенасервере"):
+            return "клиент и сервер"
+        if is_server(directive):
+            return "сервер"
+        if is_client(directive):
+            return "клиент"
+        return "контекст неизвестен"
 
     def facts_text(self):
-        def describe(*keys):
-            found = []
-            for key in keys:
-                for name, line in self.facts.get(key, []):
-                    found.append((line, name))
-            found.sort()
-            return ", ".join(f"{name} (стр. {line})" for line, name in found)
-
         directive = self.directive if self.directive else "директива не указана"
-        lines = [f"Контекст: {directive} ({get_context_name(self.directive)})"]
-
-        sections = [
-            ("Транзакция", ("tx_begin", "tx_commit", "tx_rollback")),
-            ("Интерактивные вызовы", ("interactive",)),
-            ("Обращения к внешним системам", ("external",)),
-            ("Запросы", ("query", "query_exec")),
-        ]
-        for title, keys in sections:
-            text = describe(*keys)
-            if text:
-                lines.append(f"{title}: {text}")
-
-        loops = len(self.facts.get("loop", []))
-        tries = len(self.facts.get("try", []))
-        lines.append(
-            f"Структура: строк {self.line_count}, циклов {loops}, "
-            f"блоков Попытка {tries}, макс. вложенность {self.max_nesting}"
-        )
-
-        if len(self.calls) > 0:
-            parts = []
-            for call in self.calls[:10]:
-                where = ", в цикле" if call.in_loop else ""
-                parts.append(f"{call.name} (стр. {call.line}{where})")
-            lines.append("Вызовы методов этого модуля: " + ", ".join(parts))
-
-        return "Структурные факты о методе:\n" + "\n".join(f"- {x}" for x in lines)
+        return f"Контекст выполнения: {directive} ({self.get_context_name(self.directive)})"
 
 
 class BSLModule:

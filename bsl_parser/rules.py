@@ -50,7 +50,7 @@ RULES = [
         "msg": "создание запроса внутри цикла (запрос на каждую итерацию)",
     },
     {
-        "pattern": re.compile(r"\.\s*Выполнить\s*\(", re.IGNORECASE),
+        "pattern": re.compile(r"\.\s*Выполнить(?:Пакет)?\s*\(", re.IGNORECASE),
         "fact": "query_exec",
         "when": "loop",
         "code": "QUERY_IN_LOOP",
@@ -76,5 +76,15 @@ RULES = [
         "when": "tx",
         "code": "EXTERNAL_IN_TRANSACTION",
         "msg": "обращение к внешней системе внутри открытой транзакции (долгая операция держит блокировки)",
+    },
+   {
+        "pattern": re.compile(
+            r"\bРегистр(?:Сведений|Накопления)\.\w+\b(?!\s*\.\s*(?:СрезПоследних|СрезПервых|Остатки|Обороты|ОстаткиИОбороты)\b)",
+            re.IGNORECASE,
+        ),
+        "fact": "reg_phys",
+        "when": "any",
+        "code": "PHYSICAL_REGISTER_READ",
+        "msg": "чтение физической таблицы регистра вместо виртуальной (СрезПоследних/Остатки/Обороты)",
     },
 ]
